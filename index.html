@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Sphere with Nodes and Labels</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://threejs.org/build/three.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let scene, camera, renderer, group;
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            let rotationVelocity = { x: 0, y: 0 };
+            const autoRotateSpeed = { x: 0.001, y: 0.001 }; // Constant speed for automatic rotation
+
+            const init = () => {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(renderer.domElement);
+
+                group = new THREE.Group();
+                const nodeRadius = 0.1; // Radius of each node
+
+                // Nodes - small spheres
+                const nodeGeometry = new THREE.SphereGeometry(nodeRadius, 16, 16);
+                for (let i = 0; i < 30; i++) {
+                    const nodeMaterial = new THREE.MeshBasicMaterial({ color: 0xabcdef }); // Node color
+                    const node = new THREE.Mesh(nodeGeometry, nodeMaterial);
+                    const phi = Math.acos(-1 + (2 * i) / 30);
+                    const theta = Math.sqrt(30 * Math.PI) * phi;
+                    node.position.x = 5 * Math.cos(theta) * Math.sin(phi);
+                    node.position.y = 5 * Math.sin(theta) * Math.sin(phi);
+                    node.position.z = 5 * Math.cos(phi);
+                    group.add(node);
+
+                    // Add user names under each node
+                    const spriteMaterial = new THREE.SpriteMaterial({ 
+                        map: new THREE.CanvasTexture(generateSpriteCanvas('User ' + (i + 1))), // User name
+                        depthTest: false
+                    });
+                    const sprite = new THREE.Sprite(spriteMaterial);
+                    sprite.position.copy(node.position).add(new THREE.Vector3(0, -(nodeRadius + 0.15), 0)); // Adjust label position
+                    sprite.scale.set(1, 0.5, 1); // Adjust label size
+                    group.add(sprite);
+                }
+
+                scene.add(group);
+                camera.position.z = 10;
+            };
+
+            function generateSpriteCanvas(text) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256; // Canvas width
+                canvas.height = 64; // Canvas height
+                context.font = '48px Arial'; // Font size
+                context.fillStyle = '#FFFFFF'; // Text color
+                context.fillText(text, 0, 48);
+                return canvas;
+            }
+
+            const onDocumentMouseDown = (event) => {
+                isDragging = true;
+                rotationVelocity = { x: 0, y: 0 };
+            };
+
+            const onDocumentMouseMove = (event) => {
+                if (isDragging) {
+                    const deltaMove = {
+                        x: event.offsetX - previousMousePosition.x,
+                        y: event.offsetY - previousMousePosition.y
+                    };
+
+                    const rotateSpeed = 0.005;
+                    group.rotation.y += deltaMove.x * rotateSpeed;
+                    group.rotation.x += deltaMove.y * rotateSpeed;
+
+                    rotationVelocity = {
+                        x: deltaMove.x * rotateSpeed,
+                        y: deltaMove.y * rotateSpeed
+                    };
+
+                    previousMousePosition = {
+                        x: event.offsetX,
+                        y: event.offsetY
+                    };
+                }
+            };
+
+            const onDocumentMouseUp = (event) => {
+                isDragging = false;
+            };
+
+            document.addEventListener('mousedown', onDocumentMouseDown, false);
+            document.addEventListener('mousemove', onDocumentMouseMove, false);
+            document.addEventListener('mouseup', onDocumentMouseUp, false);
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                if (!isDragging) {
+                    // Apply constant rotation when not dragging
+                    group.rotation.y += autoRotateSpeed.y;
+                    group.rotation.x += autoRotateSpeed.x;
+
+                    // Apply momentum rotation
+                    group.rotation.y += rotationVelocity.x;
+                    group.rotation.x += rotationVelocity.y;
+
+                    // Gradually reduce the rotation velocity
+                    rotationVelocity.x *= 0.95;
+                    rotationVelocity.y *= 0.95;
+                }
+
+                renderer.render(scene, camera);
+            };
+
+            init();
+            animate();
+        });
+    </script>
+</body>
+</html>
